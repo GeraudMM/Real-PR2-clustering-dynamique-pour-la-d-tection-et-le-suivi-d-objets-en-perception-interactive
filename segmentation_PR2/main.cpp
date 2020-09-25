@@ -62,7 +62,7 @@ int main ()
 	float spatial_importance = 0.4f;
 	float normal_importance = 1.0f;
 	uint64_t min_number_in_radius_for_noise_reduction = 5;
-	bool PR2_real = 1;
+	bool PR2_real = 0;
 	int resolution;
 	int size_x;
 	int size_y;
@@ -75,6 +75,7 @@ int main ()
 		size_y = 640;
 		resolution = size_x*size_y;
 	}
+	int push_primitive_done = 0;
 	
 	// Pointcloud, used to store the cloud from the rgbd camera
     PointCloudT::Ptr cloud (new PointCloudT);
@@ -202,21 +203,22 @@ int main ()
 		        zmq::message_t reply;
 		        requester.recv(reply, zmq::recv_flags::none);
 		        std::string rep = std::string(static_cast<char*>(reply.data()), reply.size());
-				int n_data = int(rep.size()/12);//Chaque points envoyé par Unity à 12 dimensions: RGBX3Y3Z3
+				int n_data = int((rep.size()-1)/12);//Chaque points envoyé par Unity à 12 dimensions: RGBX3Y3Z3
 				LOG(INFO) << n_data << " points are imported";
-				
+				push_primitive_done = int(rep[0]-48);
+				LOG(INFO) << "Push Primitive Done : "<< push_primitive_done;
 				cloud.reset (new PointCloudT);
 				
 				std::ofstream xyzrgb_file(filenameXYZRGB);//Pour la sauvegarde du nuage de points dans un fichier
 				xyzrgb_file << std::setprecision(5);
 				int accu_points = 0;
 		        for(int i =0;i<n_data; i++){
-					colors[i].x = int((rep[i*12]+256))%256; //On code les valeurs Unity sur 8bit chacune
-					colors[i].y = int((rep[i*12+1]+256))%256; 
-					colors[i].z = int((rep[i*12+2]+256))%256; 
-					points[i].x = int((rep[i*12+3]+256))%256*pow(256,2) +int((rep[i*12+4]+256))%256*pow(256,1) + int((rep[i*12+5]+256))%256;
-					points[i].y = int((rep[i*12+6]+256))%256*pow(256,2) +int((rep[i*12+7]+256))%256*pow(256,1) + int((rep[i*12+8]+256))%256;
-					points[i].z = int((rep[i*12+9]+256))%256*pow(256,2) +int((rep[i*12+10]+256))%256*pow(256,1) + int((rep[i*12+11]+256))%256;
+					colors[i].x = int((rep[i*12+0+1]+256))%256; //On code les valeurs Unity sur 8bit chacune
+					colors[i].y = int((rep[i*12+1+1]+256))%256; 
+					colors[i].z = int((rep[i*12+2+1]+256))%256; 
+					points[i].x = int((rep[i*12+3+1]+256))%256*pow(256,2) +int((rep[i*12+4+1]+256))%256*pow(256,1) + int((rep[i*12+5+1]+256))%256;
+					points[i].y = int((rep[i*12+6+1]+256))%256*pow(256,2) +int((rep[i*12+7+1]+256))%256*pow(256,1) + int((rep[i*12+8+1]+256))%256;
+					points[i].z = int((rep[i*12+9+1]+256))%256*pow(256,2) +int((rep[i*12+10+1]+256))%256*pow(256,1) + int((rep[i*12+11+1]+256))%256;
 
 					
 					pcl::PointXYZRGBA pt;
@@ -417,6 +419,7 @@ int main ()
 
 
 				std::string FPFHL = "";
+				FPFHL += (char)push_primitive_done;//Es ce que le robot à bien effectué la Push primitive ou non?
 				//write the histogram in a file
 				LOG(INFO) << "Sauvegarde des fpfhs labelisees...";
 
